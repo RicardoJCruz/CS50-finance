@@ -111,13 +111,23 @@ def logout():
 @login_required
 def quote():
     """Get stock quote."""
+    
     return apology("TODO")
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-    return apology("TODO")
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        confirmation = request.form.get("confirmation")
+        if not username or db.execute("SELECT username FROM users WHERE username = ?", username):
+            return apology("Username is empty or already taken")
+        if not password or not confirmation or password != confirmation:
+            return apology("Password is empty or do not match")
+        db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, generate_password_hash(password))
+    return render_template("register.html")
 
 
 @app.route("/sell", methods=["GET", "POST"])

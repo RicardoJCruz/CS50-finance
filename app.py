@@ -42,8 +42,27 @@ def after_request(response):
 @app.route("/")
 @login_required
 def index():
+    # User stocks
+    stocks = db.execute("SELECT symbol, shares FROM transactions WHERE user_id = ?", session["user_id"])
+    
+    # User cash
+    cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
+
+    # Add total sum to cash dictionary
+    cash[0]["total"] = 0
+    
+    # Add "price" & "sum of stocks" to stocks dictionary
+    # and update "total" in cash dictionary
+    for stock in stocks:
+        stock["price"] = lookup(stock["symbol"])["price"]
+        stock["sum"] = stock["price"] * stock["shares"]
+        cash[0]["total"] += stock["price"] * stock["shares"]
+
+    # Add up stocks total + user cash
+    cash[0]["total"] += cash[0]["cash"]
+    
     """Show portfolio of stocks"""
-    return apology("TODO")
+    return render_template("index.html", stocks=stocks, cash=cash[0])
 
 
 @app.route("/buy", methods=["GET", "POST"])

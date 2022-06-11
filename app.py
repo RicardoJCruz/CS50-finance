@@ -70,9 +70,9 @@ def buy():
 
         # 
         price = lookup(symbol)["price"]
-        rows = db.execute("SELECT username, cash from users WHERE id = ?", session["user_id"])
+        rows = db.execute("SELECT cash from users WHERE id = ?", session["user_id"])
         if (price * shares) < rows[0]["cash"]:
-            db.execute("INSERT INTO transactions (username, movement, symbol, shares, price, date) VALUES (?, 'buy', ?, ?, ?, datetime())", rows[0]["username"], symbol, shares, price)
+            db.execute("INSERT INTO transactions (user_id, movement, symbol, shares, price, date) VALUES (?, 'buy', ?, ?, ?, datetime())", session["user_id"], symbol, shares, price)
             db.execute("UPDATE users SET cash = ? WHERE id = ?", rows[0]["cash"] - (price * shares), session["user_id"])
         else:
             return apology("Number of shares cannot be afford at the current price")

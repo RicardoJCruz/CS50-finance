@@ -50,8 +50,33 @@ def index():
 @login_required
 def buy():
     """Buy shares of stock"""
-    
-    return apology("TODO")
+    if request.method == "POST":
+        # Request symbol
+        symbol = request.form.get("symbol")
+
+        # Verify symbol
+        if not symbol or lookup(symbol) == None:
+            return apology("Symbol is empty or is invalid")
+
+        # Get shares and try casting
+        try:
+            shares = int(request.form.get("shares"))
+        except ValueError:
+            return apology("Invalid number of shares")
+
+        # Verify shares
+        if shares <= 0:
+            return apology("Invalid number of shares")
+
+        # 
+        price = lookup(symbol)["price"]
+        rows = db.execute("SELECT username, cash from users WHERE id = ?", session["user_id"])
+        if (price * shares) < rows[0]["cash"]:
+            db.execute("INSERT INTO transactions (username, movement, symbol, shares, price, date) VALUES (?, 'buy', ?, ?, ?, datetime())", rows[0]["username"], symbol, shares, price)
+            db.execute("UPDATE users SET cash = ? WHERE id = ?", rows[0]["cash"] - (price * shares), session["user_id"])
+        else:
+            return apology("Number of shares cannot be afford at the current price")
+    return render_template("buy.html")
 
 
 @app.route("/history")
@@ -114,7 +139,11 @@ def quote():
     """Get stock quote."""
     if request.method == "POST":
         symbol = lookup(request.form.get("symbol"))
-        return render_template("quoted.html", name=symbol["name"], price=symbol["price"], symbol=symbol["symbol"])
+        if symbol != None:
+            return render_template("quoted.html", name=symbol["name"], price=symbol["price"], symbol=symbol["symbol"])
+        else:
+            return apology("Invalid symbol")
+    
     return render_template("quote.html")
 
 
@@ -122,14 +151,19 @@ def quote():
 def register():
     """Register user"""
     if request.method == "POST":
+
         username = request.form.get("username")
         password = request.form.get("password")
+
         confirmation = request.form.get("confirmation")
         if not username or db.execute("SELECT username FROM users WHERE username = ?", username):
             return apology("Username is empty or already taken")
-        if not password or not confirmation or password != confirmation:
+        
+        elif not password or not confirmation or password != confirmation:
             return apology("Password is empty or do not match")
+        
         db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, generate_password_hash(password))
+    
     return render_template("register.html")
 
 

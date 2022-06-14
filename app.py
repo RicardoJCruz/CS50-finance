@@ -199,7 +199,7 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock"""
-    rows = db.execute("SELECT symbol, shares FROM portfolios WHERE user_id = ?", session["user_id"])
+    rows = db.execute("SELECT symbol, shares FROM portfolios WHERE user_id = ? ORDER BY symbol ASC", session["user_id"])
     if request.method == "POST":
 
         # Get symbol and number of stocks

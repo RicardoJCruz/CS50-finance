@@ -60,7 +60,7 @@ def index():
 
     # Add up stocks total + user cash
     cash[0]["total"] += cash[0]["cash"]
-    
+
     """Show portfolio of stocks"""
     return render_template("index.html", stocks=stocks, cash=cash[0])
 
@@ -190,4 +190,39 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock"""
-    return apology("TODO")
+    rows = db.execute("SELECT symbol, shares FROM transactions WHERE user_id = ?", session["user_id"])
+    if request.method == "POST":
+
+        # Get symbol and number of stocks
+        symbol = request.form.get("symbol")   
+        shares = request.form.get("shares")
+
+        # Ensure a symbol and a number were provided
+        if not symbol or not shares:
+            return apology("A stock and a number of shares are required")
+
+        # Cast shares string to number
+        try:
+            shares = int(request.form.get("shares"))
+        except ValueError:
+            return apology("Invalid number of shares")
+            
+        # Verify shares is a positive number
+        if shares < 1:
+            return apology("Invalid number of shares")
+
+        # Ensure user has that stock
+        for row in rows:
+            if symbol == row["symbol"]:
+                # Ensure user has amount of stocks
+                if shares <= row["shares"]:
+                    db.execute("UPDATE transactions SET shares = shares - ? WHERE symbol = ? AND user_id = ?", shares, symbol, session["user_id"])
+                    db.execute("UPDATE users SET cash = cash + ? WHERE id = ?", lookup(symbol)["price"], session["user_id"])
+                    return redirect("/sell")
+                else:
+                    return apology("You don't own that many shares of that stock")
+        return apology("You don't have shares of that stock")
+                
+
+
+    return render_template("sell.html", rows=rows)

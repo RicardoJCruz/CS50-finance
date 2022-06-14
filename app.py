@@ -48,8 +48,8 @@ def index():
     # User cash
     cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
 
-    # Add total sum to cash dictionary
-    cash[0]["total"] = 0
+    # Add 'total sum' to cash dictionary
+    cash[0]["total"] = cash[0]["cash"]
     
     # Add "price" & "sum of stocks" to stocks dictionary
     # and update "total" in cash dictionary
@@ -57,9 +57,6 @@ def index():
         stock["price"] = lookup(stock["symbol"])["price"]
         stock["sum"] = stock["price"] * stock["shares"]
         cash[0]["total"] += stock["price"] * stock["shares"]
-
-    # Add up stocks total + user cash
-    cash[0]["total"] += cash[0]["cash"]
 
     """Show portfolio of stocks"""
     return render_template("index.html", stocks=stocks, cash=cash[0])
@@ -201,11 +198,11 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock"""
-    rows = db.execute("SELECT symbol, shares FROM transactions WHERE user_id = ?", session["user_id"])
+    rows = db.execute("SELECT symbol, shares FROM portfolios WHERE user_id = ?", session["user_id"])
     if request.method == "POST":
 
         # Get symbol and number of stocks
-        symbol = request.form.get("symbol")   
+        symbol = request.form.get("symbol").upper()
         shares = request.form.get("shares")
 
         # Ensure a symbol and a number were provided
@@ -227,8 +224,11 @@ def sell():
             if symbol == row["symbol"]:
                 # Ensure user has amount of stocks
                 if shares <= row["shares"]:
-                    db.execute("UPDATE transactions SET shares = shares - ? WHERE symbol = ? AND user_id = ?", shares, symbol, session["user_id"])
-                    db.execute("UPDATE users SET cash = cash + ? WHERE id = ?", lookup(symbol)["price"], session["user_id"])
+                    db.execute("UPDATE portfolios SET shares = shares - ? WHERE symbol = ? AND user_id = ?", shares, symbol, session["user_id"])
+                    db.execute("UPDATE users SET cash = cash + ? WHERE id = ?", lookup(symbol)["price"] * shares, session["user_id"])
+                    db.execute("INSERT INTO transactions (user_id, movement, symbol, shares, price, date) VALUES (?, 'sell', ?, ?, ?, datetime())", session["user_id"], symbol, shares, lookup(symbol)["price"])
+                    # Delete empty entries
+                    db.execute("DELETE FROM portfolios WHERE shares = 0 AND user_id = ?", session["user_id"])
                     return redirect("/sell")
                 else:
                     return apology("You don't own that many shares of that stock")

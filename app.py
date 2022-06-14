@@ -71,7 +71,7 @@ def buy():
     """Buy shares of stock"""
     if request.method == "POST":
         # Request symbol
-        symbol = request.form.get("symbol")
+        symbol = request.form.get("symbol").upper()
 
         # Verify symbol
         if not symbol or lookup(symbol) == None:
@@ -84,13 +84,24 @@ def buy():
             return apology("Invalid number of shares")
 
         # Verify shares
-        if shares <= 0:
+        if shares < 1:
             return apology("Invalid number of shares")
 
-        # 
+        # Get price of stock
         price = lookup(symbol)["price"]
+
+        # Get cash of the user
         rows = db.execute("SELECT cash from users WHERE id = ?", session["user_id"])
+
+        # Verify user has enough cash to buy
         if (price * shares) < rows[0]["cash"]:
+            # add stock if not in table
+            if not db.execute("SELECT * FROM portfolios WHERE symbol = ? AND user_id = ?", symbol, session["user_id"]):
+                db.execute("INSERT INTO portfolios (user_id, symbol, shares) VALUES (?, ?, ?)", session["user_id"], symbol, shares)
+            # update stock if already exists
+            else:
+                db.execute("UPDATE portfolios SET shares = shares + ? WHERE symbol = ? AND user_id = ?", shares, symbol, session["user_id"])
+            # add transaction and update user cash
             db.execute("INSERT INTO transactions (user_id, movement, symbol, shares, price, date) VALUES (?, 'buy', ?, ?, ?, datetime())", session["user_id"], symbol, shares, price)
             db.execute("UPDATE users SET cash = ? WHERE id = ?", rows[0]["cash"] - (price * shares), session["user_id"])
         else:
@@ -203,7 +214,7 @@ def sell():
 
         # Cast shares string to number
         try:
-            shares = int(request.form.get("shares"))
+            shares = int(shares)
         except ValueError:
             return apology("Invalid number of shares")
             

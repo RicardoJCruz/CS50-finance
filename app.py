@@ -43,7 +43,7 @@ def after_request(response):
 @login_required
 def index():
     # User stocks
-    stocks = db.execute("SELECT symbol, shares FROM transactions WHERE user_id = ?", session["user_id"])
+    stocks = db.execute("SELECT symbol, shares FROM portfolios WHERE user_id = ?", session["user_id"])
     
     # User cash
     cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
